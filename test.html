@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Качество воздуха в городах Казахстана</title>
+    <!-- Подключение стилей Bootstrap -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Подключаем стили Bootstrap -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- HTML-разметка для раздела с информацией о загрязнении в реальном времени -->
+<section class="bg-recent-project">
+    <div class="container">
+        <div class="row">
+            <div class="recent-project">
+                <div class="section-header">
+                    <h2>Состояние воздуха городов Казахстана</h2>
+                    <p>Узнайте уровень загрязнения атмосферного воздуха и метеорологические условия городов Казахстана. Нажмите на кнопку ниже, чтобы выбрать город.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="dropdown text-center" style="margin-left: 15%; margin-right: 15%; margin-top: 2%; margin-bottom: 3%;">
+        <button class="btn btn-custom dropdown-toggle btn-lg" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Выберите город
+        </button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+            <a class="dropdown-item" href="#" onclick="getWeatherAndPollutionData('Алматы')">Алматы</a>
+            <a class="dropdown-item" href="#" onclick="getWeatherAndPollutionData('Усть-Каменогорск')">Усть-Каменогорск</a>
+            <a class="dropdown-item" href="#" onclick="getWeatherAndPollutionData('Караганда')">Караганда</a>
+        </div>
+    </div>
+    <div id="weatherAndPollutionData" style="margin-left: 25%; margin-right: 25%; auto;"></div>
+</section>
+
+<!-- HTML-разметка для раздела с диаграммой данных о загрязнении за последние 12 часов -->
+<section class="container mt-5">
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Диаграмма данных о загрязнении за последние 12 часов</h5>
+            <div class="dropdown mb-3">
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Выберите город
+                </button>
+                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton2">
+                    <a class="dropdown-item" href="#" onclick="updateChart('Almaty')">Алматы</a>
+                    <a class="dropdown-item" href="#" onclick="updateChart('Усть-Каменогорск')">Усть-Каменогорск</a>
+                    <a class="dropdown-item" href="#" onclick="updateChart('Караганда')">Караганда</a>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="pollutionChart"></canvas>
+            </div>
+            <div id="chartInfo"></div>
+        </div>
+    </div>
+</section>
+
+<!-- Подключение jQuery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+<!-- Подключение Popper.js и Bootstrap JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+<!-- JavaScript-код для работы с данными о погоде и загрязнении -->
+<script>
+    // Функция для получения данных о погоде и загрязнении воздуха по выбранному городу
+		async function getWeatherAndPollutionData(cityName) {
+			const cities = {
+					"Алматы": { lat: 43.2220, lon: 76.8512 },
+					"Усть-Каменогорск": { lat: 49.9639, lon: 82.6094 },
+					"Караганда": { lat: 49.8139, lon: 73.0951 }
+			};
+
+			const city = cities[cityName];
+
+			const weatherAndPollutionContainer = document.getElementById('weatherAndPollutionData');
+			weatherAndPollutionContainer.innerHTML = ''; // Очищаем контейнер перед обновлением
+
+			try {
+					const weatherResponse = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${city.lat}&lon=${city.lon}&appid=485931c576bd9f9b501a900f5ccdc4bd`);
+					const weatherData = await weatherResponse.json();
+
+					const pollutionResponse = await fetch(`https://api.openweathermap.org/data/2.5/air_pollution?lat=${city.lat}&lon=${city.lon}&appid=485931c576bd9f9b501a900f5ccdc4bd`);
+					const pollutionData = await pollutionResponse.json();
+
+					if (weatherData && pollutionData && pollutionData.list && pollutionData.list.length > 0 && pollutionData.list[0].components) {
+							const temperatureCelsius = Math.round(weatherData.main.temp - 273.15);
+							const humidity = weatherData.main.humidity;
+							const windSpeed = weatherData.wind.speed;
+
+							const pm25 = pollutionData.list[0].components.pm2_5; // PM2.5
+							const pm10 = pollutionData.list[0].components.pm10; // PM10
+							const so2 = pollutionData.list[0].components.so2; // Диоксид серы
+							const co = pollutionData.list[0].components.co; // Оксид углерода
+							const no2 = pollutionData.list[0].components.no2; // Диоксид азота
+
+							const card = document.createElement('div');
+							card.classList.add('card');
+							card.style.padding = '10px'; // добавляем отступы для карточки
+							card.innerHTML = `
+									<h2>${cityName}</h2>
+									<table class="table table-success table-striped">
+											<thead>
+													<tr>
+															<th scope="col">Температура:</th>
+															<th scope="col">${temperatureCelsius} °C</th>
+													</tr>
+											</thead>
+											<tbody>
+													<tr>
+															<th scope="col">Влажность:</th>
+															<th scope="col">${humidity}%</th>
+													</tr>
+													<tr>
+															<th scope="col">Скорость ветра:</th>
+															<th scope="col">${windSpeed} м/с</th>
+													</tr>
+													<tr>
+															<th scope="col">PM2.5:</th>
+															<th scope="col">${pm25} мкг/м³</th>
+													</tr>
+													<tr>
+															<th scope="col">PM10:</th>
+															<th scope="col">${pm10} мкг/м³</th>
+													</tr>
+													<tr>>
+															<th scope="col">Диоксид серы SO2:</th>
+															<th scope="col">${so2} мкг/м³</th>
+													</tr>
+													<tr>
+															<th scope="col">Диоксид азота NO2:</th>
+															<th scope="col">${no2} мкг/м³</th>
+													</tr>
+											</tbody>
+									</table>
+							`;
+															weatherAndPollutionContainer.appendChild(card);
+											}
+							} catch (error) {
+											console.error('Ошибка при получении данных о погоде и загрязнении воздуха:', error);
+							}
+			}
+
+    // Функция для обновления данных на диаграмме при выборе города
+		// Глобальная переменная для хранения текущего графика
+		let pollutionChart;
+		
+		// Функция для обновления данных на диаграмме при выборе города
+		function updateChart(city) {
+				// Определяем координаты и временной диапазон для каждого города
+				let lat, lon, startUnixTime, endUnixTime;
+				switch (city) {
+				case 'Almaty':
+						lat = 43.25;
+						lon = 76.95;
+						break;
+				case 'Ust-Kamenogorsk':
+						lat = 49.9714;
+						lon = 82.6059;
+						break;
+				case 'Karaganda':
+						lat = 49.8074;
+						lon = 73.1053;
+						break;
+				default:
+						return;
+				}
+		
+				// Получаем текущее время и вычитаем 12 часов
+				const currentTime = new Date();
+				const startTime = new Date(currentTime.getTime() - 12 * 60 * 60 * 1000);
+				const endTime = currentTime;
+		
+				// Форматируем время в формат Unix
+				startUnixTime = Math.round(startTime.getTime() / 1000);
+				endUnixTime = Math.round(endTime.getTime() / 1000);
+		
+				// Формируем URL-адрес запроса
+				const apiUrl = `https://api.openweathermap.org/data/2.5/air_pollution/history?lat=${lat}&lon=${lon}&start=${startUnixTime}&end=${endUnixTime}&appid=6a1e4a8d55690dab85972220b8c1e86d`;
+		
+				// Получаем данные с API OpenWeatherMap
+				fetch(apiUrl)
+				.then(response => {
+						if (!response.ok) {
+								throw new Error('Failed to fetch data');
+						}
+						return response.json();
+				})
+				.then(data => {
+						// Проверяем наличие данных и их корректность
+						if (data && Array.isArray(data.list) && data.list.length > 0) {
+								const pollutionData = data.list.map(item => item.components.pm2_5);
+								const timestamps = data.list.map(item => new Date(item.dt * 1000).toLocaleString('en-US', { hour: 'numeric', hour12: true }));
+								
+								// Уничтожаем существующий график, если он есть
+								if (pollutionChart) {
+								pollutionChart.destroy();
+								}
+								
+								// Обновляем данные на диаграмме
+								const ctx = document.getElementById('pollutionChart').getContext('2d');
+								pollutionChart = new Chart(ctx, {
+										type: 'bar',
+										data: {
+												labels: timestamps,
+												datasets: [{
+														label: 'PM2.5',
+														data: pollutionData,
+														backgroundColor: 'rgba(75, 192, 192, 0.2)', // Зелёный цвет
+														borderColor: 'rgba(75, 192, 192, 1)',
+														borderWidth: 1
+												},
+												{
+														label: 'Среднесуточный ПДК',
+														data: Array(pollutionData.length).fill(15), // Значение среднесуточного ПДК
+														type: 'line',
+														fill: false,
+														borderColor: 'rgba(255, 206, 86, 1)', // Желтая линия
+														borderWidth: 2,
+														borderDash: [5, 5],
+														pointRadius: 0,
+												},
+												{
+														label: 'Максимально разовый ПДК',
+														data: Array(pollutionData.length).fill(50), // Значение максимально разового ПДК
+														type: 'line',
+														fill: false,
+														borderColor: 'rgba(255, 99, 132, 1)', // Красная линия
+														borderWidth: 2,
+														borderDash: [5, 5],
+														pointRadius: 0,
+												}]
+										},
+										options: {
+												scales: {
+														yAxes: [{
+																type: 'linear',
+																display: false // Скрываем шкалу для линейных данных
+														}]
+												}
+										}
+								});
+								
+														// Выводим имя города
+														document.getElementById('chartInfo').innerHTML = `
+																<p><strong>Город:</strong> ${city}</p>
+														`;
+										} else {
+														console.log('No data available');
+										}
+						})
+										.catch(error => {
+														console.log('Error fetching data:', error);
+										});
+								}
+								// Инициализируем диаграмму для города по умолчанию (Алматы)
+								updateChart('Almaty');
+
+// Инициализация диаграммы для города по умолчанию
+updateChart('Almaty');
+</script>
+
+</body>
+</html>
